@@ -29,7 +29,7 @@ module.exports = {
   },
   // 配置编译器版本
   solidity: {
-      version: "0.8.18",
+      version: "0.8.20",
       settings: {
           optimizer: {
               enabled: false,
