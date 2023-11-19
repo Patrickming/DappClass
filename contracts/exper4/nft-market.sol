@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@oppenzapling";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 //上架 购买 撤单 
-error PriceNotMet(address nftAddress, uint256 tokenId, uint256 price);
+error PriceNotMet(address nftAddress, uint256 tokenId, uint256 price)
 error ItemNotForSale(address nftAddress, uint256 tokenId);
 error NotListed(address nftAddress, uint256 tokenId);
 error AlreadyListed(address nftAddress, uint256 tokenId);
