@@ -3,7 +3,8 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "./erc20.sol";
+import "./erc721.sol";
 
 error PriceNotMet(address nftAddress, uint256 tokenId, uint256 price);
 error ItemNotForSale(address nftAddress, uint256 tokenId);
@@ -49,6 +50,9 @@ contract NftMarketplace is ReentrancyGuard {
     mapping(address => mapping(uint256 => Listing)) private s_listings;
     //seller address => profit
     mapping(address => uint256) private s_proceeds;
+
+
+    
 
     // Function modifiers
 
