@@ -16,6 +16,13 @@ error NotApprovedForMarketplace();
 error PriceMustBeAboveZero();
 
 contract NftMarketplace is ReentrancyGuard {
+
+    // State Variables
+
+    //NFT contract address => Token ID => Listing(price,seller)
+    mapping(address => mapping(uint256 => Listing)) private s_listings;
+    //seller address => profit
+    mapping(address => uint256) private s_proceeds;
     struct Listing {
         // seller address and nft prize
         uint256 price;
@@ -43,13 +50,6 @@ contract NftMarketplace is ReentrancyGuard {
         uint256 indexed tokenId,
         uint256 price
     );
-
-    // State Variables
-
-    //NFT contract address => Token ID => Listing(price,seller)
-    mapping(address => mapping(uint256 => Listing)) private s_listings;
-    //seller address => profit
-    mapping(address => uint256) private s_proceeds;
 
 
     
