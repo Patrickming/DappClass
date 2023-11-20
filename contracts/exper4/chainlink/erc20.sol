@@ -7,8 +7,13 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract MyERC20 is ERC20, ERC20Burnable, Ownable {
     constructor(
-        address initialOwner
-    ) ERC20("XiaRuoming", "XRM") Ownable(initialOwner) {
-        _mint(msg.sender, 1 * 10 ** 8 * 10 ** 18);//固定18精度
+        address initialOwner,
+        string memory name_,
+        string memory symbol_,
+        uint256 totalSupply_
+    ) ERC20(name_, symbol_) Ownable(initialOwner) {}
+
+    function mint(address to, uint256 amount) public onlyOwner {
+        _mint(to, amount);
     }
 }

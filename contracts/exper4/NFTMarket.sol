@@ -1,18 +1,22 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.4;
+pragma solidity ^0.8.20;
 
-import "./interfaces/IERC721Receiver.sol";
-import "./tokens/ERC721.sol";
-import "./tokens/ERC20.sol";
-import "./utils/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+
+error NotListed(uint256 tokenId);
+error PriceNotMet(uint256 tokenId, uint256 price);
+error PriceMustBeAboveZero();
+error YouNotOwner();
 
 /**
  * @title NFTMarket contract that allows atomic swaps of ERC20 and ERC721
  */
 contract Market is IERC721Receiver {
-    ERC20 public erc20;
-    ERC721 public erc721;
+    IERC20 public erc20;
+    IERC721 public erc721;
 
     bytes4 internal constant MAGIC_ON_ERC721_RECEIVED = 0x150b7a02;
 
@@ -26,6 +30,13 @@ contract Market is IERC721Receiver {
     Order[] public orders;
     mapping(uint256 => uint256) public idToOrderIndex;
 
+    modifier isListed(uint256 _tokenId) {
+        if (orderOfId[_tokenId].seller == address(0)) {
+            revert NotListed(_tokenId);
+        }
+        _;
+    }
+
     event Deal(address buyer, address seller, uint256 tokenId, uint256 price);
     event NewOrder(address seller, uint256 tokenId, uint256 price);
     event CancelOrder(address seller, uint256 tokenId);
@@ -36,7 +47,7 @@ contract Market is IERC721Receiver {
         uint256 price
     );
 
-    constructor(ERC20 _erc20, ERC721 _erc721) {
+    constructor(IERC20 _erc20, IERC721 _erc721) {
         require(
             address(_erc20) != address(0),
             "Market: ERC20 contract address must be non-null"
@@ -45,18 +56,18 @@ contract Market is IERC721Receiver {
             address(_erc721) != address(0),
             "Market: ERC721 contract address must be non-null"
         );
-        erc20 = _erc20;
-        erc721 = _erc721;
+        erc20 = IERC20(_erc20);
+        erc721 = IERC721(_erc721);
     }
 
-    function buy(uint256 _tokenId, uint256 _price) external {
-        require(isListed(_tokenId), "Market: Token ID is not listed");
-
+    function buy(uint256 _tokenId, uint256 _price) external isListed(_tokenId) {
         address seller = orderOfId[_tokenId].seller;
         address buyer = msg.sender;
         uint256 price = orderOfId[_tokenId].price;
 
-        require(price == _price, "Market: price is not equal");
+        if (_price < price) {
+            revert PriceNotMet(_tokenId, price);
+        }
 
         require(
             erc20.transferFrom(buyer, seller, price),
@@ -68,10 +79,11 @@ contract Market is IERC721Receiver {
         emit Deal(buyer, seller, _tokenId, price);
     }
 
-    function cancelOrder(uint256 _tokenId) external {
-        require(isListed(_tokenId), "Market: Token ID is not listed");
+    function cancelOrder(uint256 _tokenId) external isListed(_tokenId) {
         address seller = orderOfId[_tokenId].seller;
-        require(seller == msg.sender, "Market: Sender is not seller");
+        if(seller != msg.sender){
+           revert YouNotOwner();
+        }
 
         erc721.safeTransferFrom(address(this), seller, _tokenId);
 
@@ -79,10 +91,15 @@ contract Market is IERC721Receiver {
         emit CancelOrder(seller, _tokenId);
     }
 
-    function changePrice(uint256 _tokenId, uint256 _price) external {
-        require(isListed(_tokenId), "Market: Token ID is not listed");
+    function changePrice(
+        uint256 _tokenId,
+        uint256 _price
+    ) external isListed(_tokenId) {
         address seller = orderOfId[_tokenId].seller;
-        require(seller == msg.sender, "Market: Sender is not seller");
+
+        if(seller != msg.sender){
+           revert YouNotOwner();
+        }
 
         uint256 previousPrice = orderOfId[_tokenId].price;
         orderOfId[_tokenId].price = _price;
@@ -92,66 +109,8 @@ contract Market is IERC721Receiver {
         emit ChangePrice(seller, _tokenId, previousPrice, _price);
     }
 
-    /**
-     * @dev List a good using a ERC721 receiver hook
-     * @param _operator the caller of this function
-     * @param _seller the good seller
-     * @param _tokenId the good id to list
-     * @param _data contains the pricing data as the first 32 bytes
-     */
-    function onERC721Received(
-        address _operator,
-        address _seller,
-        uint256 _tokenId,
-        bytes calldata _data
-    ) public override returns (bytes4) {
-        require(_operator == _seller, "Market: Seller must be operator");
-        uint256 _price = toUint256(_data, 0);
-        placeOrder(_seller, _tokenId, _price);
-
-        return MAGIC_ON_ERC721_RECEIVED;
-    }
-
-    function isListed(uint256 _tokenId) public view returns (bool) {
-        return orderOfId[_tokenId].seller != address(0);
-    }
-
     function getOrderLength() public view returns (uint256) {
         return orders.length;
-    }
-
-    // https://stackoverflow.com/questions/63252057/how-to-use-bytestouint-function-in-solidity-the-one-with-assembly
-    function toUint256(bytes memory _bytes, uint256 _start)
-        public
-        pure
-        returns (uint256)
-    {
-        require(_start + 32 >= _start, "Market: toUint256_overflow");
-        require(_bytes.length >= _start + 32, "Market: toUint256_outOfBounds");
-        uint256 tempUint;
-
-        assembly {
-            tempUint := mload(add(add(_bytes, 0x20), _start))
-        }
-
-        return tempUint;
-    }
-
-    function placeOrder(
-        address _seller,
-        uint256 _tokenId,
-        uint256 _price
-    ) internal {
-        require(_price > 0, "Market: Price must be greater than zero");
-
-        orderOfId[_tokenId].seller = _seller;
-        orderOfId[_tokenId].price = _price;
-        orderOfId[_tokenId].tokenId = _tokenId;
-
-        orders.push(orderOfId[_tokenId]);
-        idToOrderIndex[_tokenId] = orders.length - 1;
-
-        emit NewOrder(_seller, _tokenId, _price);
     }
 
     function removeListing(uint256 _tokenId) internal {
@@ -167,5 +126,63 @@ contract Market is IERC721Receiver {
         }
 
         orders.pop();
+    }
+
+    function _placeOrder(
+        address _seller,
+        uint256 _tokenId,
+        uint256 _price
+    ) internal {
+        if (_price <= 0) {
+            revert PriceMustBeAboveZero();
+        }
+
+        orderOfId[_tokenId].seller = _seller;
+        orderOfId[_tokenId].price = _price;
+        orderOfId[_tokenId].tokenId = _tokenId;
+
+        orders.push(orderOfId[_tokenId]);
+        idToOrderIndex[_tokenId] = orders.length - 1;
+        emit NewOrder(_seller, _tokenId, _price);
+    }
+
+    /**
+     * @dev List a good using a ERC721 receiver hook
+     * @param _operator the caller of this function
+     * @param _seller the good seller
+     * @param _tokenId the good id to list
+     * @param _data contains the pricing data as the first 32 bytes
+     */
+
+    //在safeTransferFrom（ERC721），safeMint（erc721），_safeTransfer中会调用间接onERC721Received
+    //也就是说，nft合约，在mint或者safeTransferFrom（不带data)
+    function onERC721Received(
+        address _operator,
+        address _seller,
+        uint256 _tokenId,
+        bytes calldata _data
+    ) public override returns (bytes4) {
+        require(_operator == _seller, "Market: Seller must be operator");
+        uint256 _price = toUint256(_data, 0);
+
+        _placeOrder(_seller, _tokenId, _price);
+
+        return MAGIC_ON_ERC721_RECEIVED;
+    }
+
+    // https://stackoverflow.com/questions/63252057/how-to-use-bytestouint-function-in-solidity-the-one-with-assembly
+    function toUint256(
+        bytes memory _bytes,
+        uint256 _start
+    ) public pure returns (uint256) {
+        require(_start + 32 >= _start, "Market: toUint256_overflow");
+        require(_bytes.length >= _start + 32, "Market: toUint256_outOfBounds");
+        uint256 tempUint;
+
+        assembly {
+            tempUint := mload(add(add(_bytes, 0x20), _start))
+        }
+
+        return tempUint;
     }
 }
