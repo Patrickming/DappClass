@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 // Check out https://github.com/Fantom-foundation/Artion-Contracts/blob/5c90d2bc0401af6fb5abf35b860b762b31dfee02/contracts/FantomMarketplace.sol
 // For a full decentralized nft marketplace
-
+//上架 购买 撤单 
 error PriceNotMet(address nftAddress, uint256 tokenId, uint256 price);
 error ItemNotForSale(address nftAddress, uint256 tokenId);
 error NotListed(address nftAddress, uint256 tokenId);
