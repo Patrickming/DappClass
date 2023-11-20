@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract MyToken is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Burnable, Ownable {
+contract MyERC721 is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Burnable, Ownable {
     constructor(address initialOwner)
         ERC721("MyToken", "MTK")
         Ownable(initialOwner)
