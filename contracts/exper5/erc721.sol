@@ -7,6 +7,8 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+//safeTransferFrom example data:0x0000000000000000000000000000000000000000000000000001c6bf52634000 ->5e+14
+//0x0000000000000000000000000000000000000000000000000DE0B6B3A7640000  -> 1e+18
 contract MyERC721 is
     ERC721,
     ERC721Enumerable,
@@ -15,10 +17,8 @@ contract MyERC721 is
     Ownable
 {
     constructor(
-        address initialOwner,
-        string memory name_,
-        string memory symbol_
-    ) ERC721(name_, symbol_) Ownable(initialOwner) {}
+        address initialOwner
+    ) ERC721("xiaruoming","XRM") Ownable(initialOwner) {}
 
     function safeMint(
         address to,

@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 error NotListed(uint256 tokenId);
-error PriceNotMet(uint256 tokenId, uint256 price);
 error PriceMustBeAboveZero();
 error YouNotOwner();
 
@@ -60,14 +59,10 @@ contract Market is IERC721Receiver {
         erc721 = IERC721(_erc721);
     }
 
-    function buy(uint256 _tokenId, uint256 _price) external isListed(_tokenId) {
+    function buy(uint256 _tokenId) external isListed(_tokenId) {
         address seller = orderOfId[_tokenId].seller;
         address buyer = msg.sender;
         uint256 price = orderOfId[_tokenId].price;
-
-        if (_price < price) {
-            revert PriceNotMet(_tokenId, price);
-        }
 
         require(
             erc20.transferFrom(buyer, seller, price),
@@ -81,8 +76,8 @@ contract Market is IERC721Receiver {
 
     function cancelOrder(uint256 _tokenId) external isListed(_tokenId) {
         address seller = orderOfId[_tokenId].seller;
-        if(seller != msg.sender){
-           revert YouNotOwner();
+        if (seller != msg.sender) {
+            revert YouNotOwner();
         }
 
         erc721.safeTransferFrom(address(this), seller, _tokenId);
@@ -97,8 +92,8 @@ contract Market is IERC721Receiver {
     ) external isListed(_tokenId) {
         address seller = orderOfId[_tokenId].seller;
 
-        if(seller != msg.sender){
-           revert YouNotOwner();
+        if (seller != msg.sender) {
+            revert YouNotOwner();
         }
 
         uint256 previousPrice = orderOfId[_tokenId].price;
@@ -107,10 +102,6 @@ contract Market is IERC721Receiver {
         order.price = _price;
 
         emit ChangePrice(seller, _tokenId, previousPrice, _price);
-    }
-
-    function getOrderLength() public view returns (uint256) {
-        return orders.length;
     }
 
     function removeListing(uint256 _tokenId) internal {
@@ -154,8 +145,9 @@ contract Market is IERC721Receiver {
      * @param _data contains the pricing data as the first 32 bytes
      */
 
-    //在safeTransferFrom（ERC721），safeMint（erc721），_safeTransfer中会调用间接onERC721Received
-    //也就是说，nft合约，在mint或者safeTransferFrom（不带data)
+    //在safeTransferFrom（ERC721），_safeMint（ERC721），_safeTransfer中会调用间接onERC721Received
+    //也就是说，nft合约，在mint或者safeTransferFrom（带data（_price））时的时候 间接就上架了 
+    //然后在本合约中只有在721代币合约中调用带data的safeTransferFrom才会触发onERC721Received
     function onERC721Received(
         address _operator,
         address _seller,
@@ -170,7 +162,6 @@ contract Market is IERC721Receiver {
         return MAGIC_ON_ERC721_RECEIVED;
     }
 
-    // https://stackoverflow.com/questions/63252057/how-to-use-bytestouint-function-in-solidity-the-one-with-assembly
     function toUint256(
         bytes memory _bytes,
         uint256 _start
@@ -184,5 +175,31 @@ contract Market is IERC721Receiver {
         }
 
         return tempUint;
+    }
+
+    //---------------Utility functions-----------------
+
+    function getOrderLength() public view returns (uint256) {
+        return orders.length;
+    }
+
+    function isList(uint256 _tokenId) public view returns (bool) {
+        return orderOfId[_tokenId].seller != address(0);
+    }
+
+    function getOrder() external view returns (Order[] memory) {
+        return orders;
+    }
+
+    function getMyOrder() public view returns (Order[] memory) {
+        Order[] memory myOrders = new Order[](getOrderLength());
+        uint256 count = 0;
+        for (uint256 i = 0; i < orders.length; i++) {
+            if (orders[i].seller == msg.sender) {
+                myOrders[count] = orders[i];
+                count++;
+            }
+        }
+        return myOrders;
     }
 }
