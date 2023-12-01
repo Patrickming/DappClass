@@ -10,10 +10,9 @@ error NotListed(uint256 tokenId);
 error PriceMustBeAboveZero();
 error YouNotOwner();
 
-/**
- * @title NFTMarket contract that allows atomic swaps of ERC20 and ERC721
- */
 contract Market is IERC721Receiver {
+
+    // State Variables
     IERC20 public erc20;
     IERC721 public erc721;
 
@@ -36,6 +35,7 @@ contract Market is IERC721Receiver {
         _;
     }
 
+    //record listingItem
     event Deal(address buyer, address seller, uint256 tokenId, uint256 price);
     event NewOrder(address seller, uint256 tokenId, uint256 price);
     event CancelOrder(address seller, uint256 tokenId);
@@ -59,6 +59,7 @@ contract Market is IERC721Receiver {
         erc721 = IERC721(_erc721);
     }
 
+    //function to buy an item
     function buy(uint256 _tokenId) external isListed(_tokenId) {
         address seller = orderOfId[_tokenId].seller;
         address buyer = msg.sender;
@@ -86,6 +87,7 @@ contract Market is IERC721Receiver {
         emit CancelOrder(seller, _tokenId);
     }
 
+    //function to update the nft price
     function changePrice(
         uint256 _tokenId,
         uint256 _price
@@ -119,6 +121,7 @@ contract Market is IERC721Receiver {
         orders.pop();
     }
 
+    //function to list an nft
     function _placeOrder(
         address _seller,
         uint256 _tokenId,
@@ -136,14 +139,6 @@ contract Market is IERC721Receiver {
         idToOrderIndex[_tokenId] = orders.length - 1;
         emit NewOrder(_seller, _tokenId, _price);
     }
-
-    /**
-     * @dev List a good using a ERC721 receiver hook
-     * @param _operator the caller of this function
-     * @param _seller the good seller
-     * @param _tokenId the good id to list
-     * @param _data contains the pricing data as the first 32 bytes
-     */
 
     //在safeTransferFrom（ERC721），_safeMint（ERC721），_safeTransfer中会调用间接onERC721Received
     //也就是说，nft合约，在mint或者safeTransferFrom（带data（_price））时的时候 间接就上架了 
