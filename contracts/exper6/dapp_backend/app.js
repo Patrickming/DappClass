@@ -1,7 +1,8 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 import fileUpload from 'express-fileupload';
-import { uploadJsonToIPFS, uploadFileToIPFS } from './ifps-uploader.js';
+import { uploadJsonToIPFS, uploadFileToIPFS } from './ipfs-uploader.js';
+import { mint } from './nft-mint.js';
 
 const app = express();
 
@@ -16,12 +17,15 @@ app.get('/', (req, res) => {
     res.render('home');
 });
 
+
+
 app.post('/upload', (req, res) => {
-    console.log("body", req.body);
+    // console.log("body", req.body);
     const title = req.body.title;
     const description = req.body.description;
-    // console.log("files", req.files);
+
     const file = req.files.file;
+    // console.log("file", file);
     const fileName = file.name;;
     const filePath = "files/" + fileName;
     file.mv(filePath, async err => {
@@ -29,46 +33,36 @@ app.post('/upload', (req, res) => {
             console.log(err);
             return res.status(500).send(err);
         }
+    
+        //上传图片到ipfs 获取CID
         const fileRestul = await uploadFileToIPFS(filePath);
         const fileCID = fileRestul.cid.toString();
         console.log("fileCID", fileCID);
 
+        //生成meta数据 包含CID、imageName、imageDesciption etc.
         const metadata = {
             title: title,
             description: description,
-            image: 'http://127.0.0.1:' + fileCID
+            image: 'http://localhost:8080/ipfs/' + fileCID
         }
-
+        //上传META数据到IPFS，获取CID
         const metadataResult = await uploadJsonToIPFS(metadata);
         const metadataCID = metadataResult.cid.toString();
-        console.log("metadataCID", metadataCID);
+        // console.log("metadataCID", metadataCID);
 
+        //铸造NFT，包含MTEA数据的CID
+        await mint("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", "http://localhost:8080/ipfs" + metadataCID)
 
-        await mint()
+        //回显前端
         res.json({
             success: true,
-            message: '上传成功',
+            message: 'upload successful',
             metadata: metadata,
         })
     })
 
-    //上传图片到ipfs 获取CID
 
 
-    //生成meta数据 包含CID、imageName、imageDesciption etc.
-
-
-    //上传META数据到IPFS，获取CID
-
-
-    //生成NFT，包含MTEA数据的CID
-
-
-    //返回数据到前端
-    res.json({
-        success: true,
-        message: '上传成功'
-    })
 });
 
 const HOST = '127.0.0.1';
