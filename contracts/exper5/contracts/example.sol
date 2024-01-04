@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol";
 /**
  * @title NFTMarket contract that allows atomic swaps of ERC20 and ERC721
  */
-contract Market is IERC721Receiver {
+contract Markets is IERC721Receiver {
     IERC20 public erc20;
     IERC721 public erc721;
 
