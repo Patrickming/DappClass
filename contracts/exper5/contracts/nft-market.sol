@@ -11,7 +11,6 @@ error PriceMustBeAboveZero();
 error YouNotOwner();
 
 contract Market is IERC721Receiver {
-
     // State Variables
     IERC20 public erc20;
     IERC721 public erc721;
@@ -141,7 +140,7 @@ contract Market is IERC721Receiver {
     }
 
     //在safeTransferFrom（ERC721），_safeMint（ERC721），_safeTransfer中会调用间接onERC721Received
-    //也就是说，nft合约，在mint或者safeTransferFrom（带data（_price））时的时候 间接就上架了 
+    //也就是说，nft合约，在mint或者safeTransferFrom（带data（_price））时的时候 间接就上架了
     //然后在本合约中只有在721代币合约中调用带data的safeTransferFrom才会触发onERC721Received
     function onERC721Received(
         address _operator,
